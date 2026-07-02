@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>my phish stats</title>
+  <meta name="description" content="Phish show attendance stats — shows, venues, cities/states, and songs — pulled from phish.net." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <nav>
+    <span class="nav-logo">~/my-phish-stats</span>
+    <a href="https://eric-d-ferguson.github.io/" class="back-link">← back to site</a>
+  </nav>
+
+  <main>
+    <section id="hero">
+      <p class="prompt">fergatron3030</p>
+      <h1>Phish Stats</h1>
+      <p class="tagline" id="generated-at">Loading…</p>
+    </section>
+
+    <section id="overview">
+      <h2><span class="section-prefix">01.</span>Overview</h2>
+      <div class="stat-grid" id="stat-grid"></div>
+    </section>
+
+    <section id="years">
+      <h2><span class="section-prefix">02.</span>Shows per year</h2>
+      <div class="year-chart" id="shows-per-year"></div>
+    </section>
+
+    <section id="places">
+      <h2><span class="section-prefix">03.</span>States &amp; provinces visited</h2>
+      <ul class="states-list" id="states-list"></ul>
+    </section>
+
+    <section id="songs">
+      <h2><span class="section-prefix">04.</span>Most played songs</h2>
+      <div class="song-list" id="top-songs"></div>
+    </section>
+  </main>
+
+  <footer>
+    data via <a href="https://phish.net/api" target="_blank" rel="noopener">phish.net API</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
