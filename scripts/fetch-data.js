@@ -5,11 +5,9 @@
 // Run locally with:
 //   PHISHNET_API_KEY=xxxx node scripts/fetch-data.js
 //
-// NOTE: phish.net's docs site (docs.phish.net) blocks automated fetches, so
-// the exact field names in the /setlists response below were pieced together
-// from third-party API wrappers and search results, not a live response. Run
-// with DEBUG=1 on the first real attempt and check the console output against
-// data/shows.json — adjust extractSongs()/field names if they don't match.
+// NOTE: /setlists/showdate/{date} returns one row per song played (with
+// `song`, `set`, `position`, `trans_mark`, etc.) rather than a single show
+// object — confirmed via a live DEBUG=1 run.
 
 import fs from 'node:fs';
 
@@ -33,10 +31,11 @@ async function getJSON(path) {
   return body.data ?? [];
 }
 
-function extractSongs(setlistHtml) {
-  if (!setlistHtml) return [];
-  // The API returns setlist text as HTML with each song wrapped in an <a> tag.
-  return [...setlistHtml.matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map((m) => m[1].trim());
+function songsInOrder(setlistRows) {
+  return [...setlistRows]
+    .sort((a, b) => String(a.set).localeCompare(String(b.set)) || a.position - b.position)
+    .map((row) => row.song)
+    .filter(Boolean);
 }
 
 function sleep(ms) {
@@ -64,7 +63,7 @@ async function main() {
         city: entry.city || record.city || null,
         state: entry.state || record.state || null,
         country: entry.country || record.country || null,
-        songs: extractSongs(entry.setlistdata),
+        songs: songsInOrder(setlist),
       });
       console.log('ok');
     } catch (err) {
