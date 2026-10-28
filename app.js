@@ -51,8 +51,8 @@ function computeStats(shows) {
 function renderStatGrid(stats) {
   const items = [
     ['Shows attended', stats.totalShows],
-    ['First show', fmtDate(stats.firstShow)],
-    ['Most recent', fmtDate(stats.lastShow)],
+    ['First show', fmtDate(stats.firstShow), 'date'],
+    ['Most recent', fmtDate(stats.lastShow), 'date'],
     ['Unique venues', stats.uniqueVenues],
     ['Unique cities', stats.uniqueCities],
     ['States/provinces', stats.uniqueStates.length],
@@ -60,9 +60,9 @@ function renderStatGrid(stats) {
   ];
 
   $('#stat-grid').innerHTML = items
-    .map(([label, value]) => `
+    .map(([label, value, kind]) => `
       <div class="stat-card">
-        <div class="stat-value">${value}</div>
+        <div class="stat-value${kind === 'date' ? ' stat-value--date' : ''}">${value}</div>
         <div class="stat-label">${label}</div>
       </div>
     `)
