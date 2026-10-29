@@ -6,6 +6,50 @@ function fmtDate(iso) {
   return `${m}/${d}/${y}`;
 }
 
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
+
+// setlist_notes from phish.net contain HTML; show them as plain text.
+const stripTags = (html) => new DOMParser().parseFromString(html, 'text/html').body.textContent.trim();
+
+const showLink = (show, text) =>
+  /^https?:\/\//.test(show.permalink || '')
+    ? `<a href="${esc(show.permalink)}" target="_blank" rel="noopener">${text}</a>`
+    : text;
+
+// songs used to be plain strings; normalize to objects so callers don't care.
+function songObjs(show) {
+  return (show.songs || []).map((s, i) => (typeof s === 'string' ? { song: s, position: i + 1 } : s));
+}
+
+// True once shows.json has been regenerated with per-song detail (set, gap, jamchart...).
+const hasDetail = (shows) => shows.some((show) => (show.songs || []).some((s) => typeof s === 'object'));
+
+const NEEDS_FETCH = '<p class="muted">Needs a fresh data fetch — run the fetch script to populate setlist detail.</p>';
+
+function setLabel(set) {
+  if (!set) return 'Setlist';
+  if (/^\d+$/.test(set)) return `Set ${set}`;
+  const encore = set.match(/^e(\d*)$/i);
+  if (encore) return encore[1] ? `Encore ${encore[1]}` : 'Encore';
+  return set;
+}
+
+const isEncore = (set) => /^e/i.test(set || '');
+
+// Ordered [setName, songs[]] pairs, in the order sets first appear.
+function groupSets(songs) {
+  const sets = new Map();
+  for (const s of songs) {
+    const key = s.set ?? '';
+    if (!sets.has(key)) sets.set(key, []);
+    sets.get(key).push(s);
+  }
+  return [...sets.entries()];
+}
+
+const place = (show) => [show.city, show.state].filter(Boolean).join(', ');
+
 function computeStats(shows) {
   const venues = new Set();
   const cities = new Set();
@@ -23,7 +67,9 @@ function computeStats(shows) {
     const year = show.showdate?.slice(0, 4);
     if (year) showsPerYear.set(year, (showsPerYear.get(year) || 0) + 1);
 
-    for (const song of show.songs || []) {
+    for (const entry of show.songs || []) {
+      // songs used to be plain strings; now they're objects with a `song` field
+      const song = typeof entry === 'string' ? entry : entry.song;
       songCounts.set(song, (songCounts.get(song) || 0) + 1);
     }
   }
@@ -111,6 +157,137 @@ function renderShowsPerYear(stats) {
     : '<p class="muted">No show data yet.</p>';
 }
 
+function renderJamcharts(shows) {
+  if (!hasDetail(shows)) return ($('#jamcharts').innerHTML = NEEDS_FETCH);
+
+  const items = shows.flatMap((show) =>
+    songObjs(show).filter((s) => s.isJamchart).map((s) => ({ show, s }))
+  );
+  if (!items.length) return ($('#jamcharts').innerHTML = '<p class="muted">No jam-chart versions yet.</p>');
+
+  const showCount = new Set(items.map(({ show }) => show.showid)).size;
+  $('#jamcharts').innerHTML = `
+    <p class="section-note">${items.length} jam-chart version${items.length === 1 ? '' : 's'} across ${showCount} show${showCount === 1 ? '' : 's'}.</p>
+    ${items
+      .map(
+        ({ show, s }) => `
+      <div class="jam-row">
+        <div class="jam-head">
+          <span class="jam-song">${esc(s.song)}</span>
+          <span class="jam-meta">${showLink(show, fmtDate(show.showdate))} · ${esc(show.venue)}${s.tracktime ? ` · ${esc(s.tracktime)}` : ''}</span>
+        </div>
+        ${s.jamchartDescription ? `<p class="jam-desc">${esc(s.jamchartDescription)}</p>` : ''}
+      </div>
+    `
+      )
+      .join('')}
+  `;
+}
+
+function renderBustouts(shows) {
+  if (!hasDetail(shows)) return ($('#bustouts').innerHTML = NEEDS_FETCH);
+
+  const items = shows
+    .flatMap((show) => songObjs(show).filter((s) => s.gap > 0).map((s) => ({ show, s })))
+    .sort((a, b) => b.s.gap - a.s.gap)
+    .slice(0, 10);
+  if (!items.length) return ($('#bustouts').innerHTML = '<p class="muted">No gap data yet.</p>');
+
+  $('#bustouts').innerHTML = `
+    <p class="section-note">The longest gaps — Phish shows since the song was last played — of anything you caught.</p>
+    ${items
+      .map(
+        ({ show, s }) => `
+      <div class="bustout-row">
+        <span class="bustout-song">${esc(s.song)}</span>
+        <span class="bustout-meta">${showLink(show, fmtDate(show.showdate))} · ${esc(show.venue)}</span>
+        <span class="bustout-gap"><strong>${s.gap}</strong> shows</span>
+      </div>
+    `
+      )
+      .join('')}
+  `;
+}
+
+function renderRotation(shows) {
+  if (!hasDetail(shows)) return ($('#rotation').innerHTML = NEEDS_FETCH);
+
+  const openers = new Map();
+  const closers = new Map();
+  const encores = new Map();
+  const bump = (map, song) => map.set(song, (map.get(song) || 0) + 1);
+
+  for (const show of shows) {
+    const sets = groupSets(songObjs(show));
+    const mainSets = sets.filter(([set]) => !isEncore(set));
+    if (mainSets.length) bump(openers, mainSets[0][1][0].song);
+    for (const [, songs] of mainSets) bump(closers, songs[songs.length - 1].song);
+    for (const [set, songs] of sets) if (isEncore(set)) songs.forEach((s) => bump(encores, s.song));
+  }
+
+  const card = (title, map) => {
+    const top = [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 6);
+    return `
+      <div class="rotation-card">
+        <h3>${title}</h3>
+        ${
+          top.length
+            ? `<ol>${top.map(([song, n]) => `<li><span>${esc(song)}</span><span class="song-count">${n}</span></li>`).join('')}</ol>`
+            : '<p class="muted">None yet.</p>'
+        }
+      </div>
+    `;
+  };
+
+  $('#rotation').innerHTML = card('Show openers', openers) + card('Set closers', closers) + card('Encores', encores);
+}
+
+function renderSetlists(shows) {
+  if (!shows.length) return ($('#setlists').innerHTML = '<p class="muted">No show data yet.</p>');
+
+  const detail = hasDetail(shows);
+  const songHTML = (s, isLast) => {
+    const name = `<span class="${s.isJamchart ? 'is-jamchart' : ''}">${esc(s.song)}</span>`;
+    if (isLast) return name;
+    const mark = s.transMark === '>' || s.transMark === '->' ? s.transMark : null;
+    return mark ? `${name} <span class="segue">${esc(mark)}</span> ` : `${name}, `;
+  };
+
+  const sorted = [...shows].sort((a, b) => b.showdate.localeCompare(a.showdate));
+  $('#setlists').innerHTML = `
+    ${detail ? '<p class="section-note">Highlighted songs are jam-chart versions.</p>' : ''}
+    ${sorted
+      .map((show) => {
+        const sets = groupSets(songObjs(show));
+        return `
+      <details class="show">
+        <summary>
+          <span class="show-date">${fmtDate(show.showdate)}</span>
+          <span class="show-venue">${esc(show.venue || 'Unknown venue')}</span>
+          <span class="show-place">${esc(place(show))}</span>
+        </summary>
+        <div class="setlist">
+          ${
+            sets.length
+              ? sets
+                  .map(
+                    ([set, songs]) => `
+            <p><span class="set-label">${esc(setLabel(set))}</span>${songs.map((s, i) => songHTML(s, i === songs.length - 1)).join('')}</p>
+          `
+                  )
+                  .join('')
+              : '<p class="muted">No setlist available.</p>'
+          }
+          ${show.setlistNotes ? `<p class="setlist-notes">${esc(stripTags(show.setlistNotes))}</p>` : ''}
+          ${show.permalink ? `<p class="setlist-link">${showLink(show, 'View on phish.net ↗')}</p>` : ''}
+        </div>
+      </details>
+    `;
+      })
+      .join('')}
+  `;
+}
+
 async function init() {
   const res = await fetch('data/shows.json');
   const data = await res.json();
@@ -124,6 +301,12 @@ async function init() {
   renderStatesList(stats);
   renderTopSongs(stats);
   renderShowsPerYear(stats);
+
+  const shows = data.shows || [];
+  renderJamcharts(shows);
+  renderBustouts(shows);
+  renderRotation(shows);
+  renderSetlists(shows);
 }
 
 init();

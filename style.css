@@ -253,6 +253,173 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+.section-note {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+}
+
+/* ── Jam charts ── */
+.jam-row {
+  padding: .9rem 0;
+  border-top: 1px solid var(--border);
+}
+.jam-row:first-of-type { border-top: none; padding-top: 0; }
+
+.jam-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: .75rem;
+}
+
+.jam-song {
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.jam-meta {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.jam-desc {
+  margin-top: .3rem;
+  font-size: .85rem;
+  color: var(--text);
+}
+
+/* ── Bustouts ── */
+.bustout-list {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.bustout-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto;
+  align-items: baseline;
+  gap: .75rem;
+  font-size: .9rem;
+}
+
+.bustout-song {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.bustout-meta {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.bustout-gap {
+  color: var(--muted);
+  font-size: .8rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bustout-gap strong { color: var(--heading); font-size: .95rem; }
+
+/* ── Openers / closers / encores ── */
+.rotation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: .9rem;
+}
+
+.rotation-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1rem;
+}
+
+.rotation-card h3 {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: .6rem;
+}
+
+.rotation-card ol { list-style: none; }
+
+.rotation-card li {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  font-size: .85rem;
+  padding: .15rem 0;
+}
+
+/* ── Setlists ── */
+.show {
+  border-top: 1px solid var(--border);
+}
+.show:last-child { border-bottom: 1px solid var(--border); }
+
+.show summary {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: .75rem;
+  align-items: baseline;
+  padding: .75rem 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: .9rem;
+}
+.show summary::-webkit-details-marker { display: none; }
+.show summary:hover .show-venue { color: var(--accent); }
+
+.show-date {
+  color: var(--heading);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.show-venue {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color .15s;
+}
+
+.show-place {
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.setlist {
+  padding: 0 0 1rem;
+  font-size: .875rem;
+}
+.setlist p { margin-bottom: .5rem; }
+
+.set-label {
+  display: inline-block;
+  min-width: 4.75rem;
+  margin-right: .35rem;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.segue { color: var(--muted); }
+
+.is-jamchart {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.setlist-notes {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.setlist-link { font-size: .8rem; }
+
 /* ── Footer ── */
 footer {
   max-width: var(--max);
@@ -264,4 +431,8 @@ footer {
 
 @media (max-width: 600px) {
   .song-row { grid-template-columns: minmax(0, 1fr) minmax(60px, 2fr) 2.5ch; }
+  .bustout-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .bustout-meta { grid-row: 2; grid-column: 1 / -1; margin-top: -.5rem; }
+  .show summary { grid-template-columns: 5.75rem minmax(0, 1fr); }
+  .show-place { display: none; }
 }
